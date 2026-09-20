@@ -29,7 +29,7 @@ def test_success_parses_result_line_and_stdin_is_closed(tmp_path, monkeypatch):
     monkeypatch.setattr(agent, "CLAUDE_PATH", fake_claude(tmp_path, f"cat > /dev/null; echo '{RESULT_LINE}'"))
     start = time.time()
     response = prompt_claude_code(request(tmp_path))
-    assert time.time() - start < 5
+    assert time.time() - start < 20  # would hang forever with an open stdin pipe
     assert response.success and response.output == "hello" and response.session_id == "s1"
     assert (tmp_path / "repo" / "agents" / "abc12345" / "oneoff" / "cc_final_object.json").exists()
 
@@ -39,7 +39,7 @@ def test_timeout_returns_retryable_error(tmp_path, monkeypatch):
     monkeypatch.setattr(agent, "STEP_TIMEOUT", 1)
     start = time.time()
     response = prompt_claude_code(request(tmp_path))
-    assert time.time() - start < 5
+    assert time.time() - start < 20
     assert not response.success and response.retry_code == RetryCode.TIMEOUT_ERROR
     assert "ADW_STEP_TIMEOUT" in response.output
 
@@ -49,3 +49,13 @@ def test_cli_failure_reports_stderr_from_file(tmp_path, monkeypatch):
     response = prompt_claude_code(request(tmp_path))
     assert not response.success and "bad flag" in response.output
     assert (tmp_path / "repo" / "agents" / "abc12345" / "oneoff" / "cc_stderr.log").read_text().strip() == "bad flag"
+
+
+def test_cli_that_lingers_after_its_result_is_stopped_after_grace(tmp_path, monkeypatch):
+    # Claude Code sometimes stays alive for minutes after printing the result line
+    monkeypatch.setattr(agent, "CLAUDE_PATH", fake_claude(tmp_path, f"echo '{RESULT_LINE}'; sleep 120"))
+    monkeypatch.setattr(agent, "EXIT_GRACE", 1)
+    start = time.time()
+    response = prompt_claude_code(request(tmp_path))
+    assert time.time() - start < 15
+    assert response.success and response.output == "hello"

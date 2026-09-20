@@ -49,6 +49,8 @@ A script sends `/<name> arg1 arg2 ...`. Claude Code replaces `$1`, `$2` (or `$AR
 ## Retries
 
 - `agent.py` retries the CLI call up to 3 times on transient errors (timeout, CLI error).
+- `agent.py` stops the CLI itself 15 seconds after the result line is written (`ADW_EXIT_GRACE`): Claude Code has been seen staying alive for 20 to 30 minutes after finishing a Bash-heavy prompt, which turned a 30 second test run into a 30 minute one. Every call is also capped by `ADW_STEP_TIMEOUT` (30 minutes).
+- The CLI runs with `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` and `DISABLE_AUTOUPDATER=1`: update checks and telemetry are what stalled it, and a headless runner does not need them.
 - `adw_test.py` re-runs the suite up to 4 times, calling `/resolve_failed_test` for each failure in between.
 - `adw_review.py` re-runs the review up to 2 times, calling `/patch` then `/implement` for each blocker in between.
 - `adw_full.py` stops at the first phase that raises `StepFailed`. The branch and the files stay; nothing is pushed.

@@ -82,6 +82,10 @@ def get_safe_subprocess_env() -> Dict[str, str]:
         
         # Claude Code Configuration
         "CLAUDE_CODE_PATH": os.getenv("CLAUDE_CODE_PATH", "claude"),
+        # No auto-update, telemetry or error reporting from the CLI: these network calls have
+        # been seen to stall a headless `claude -p` for many minutes at startup or exit.
+        "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+        "DISABLE_AUTOUPDATER": "1",
         "CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": os.getenv(
             "CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR", "true"
         ),
@@ -129,6 +133,9 @@ STDERR_LOG = "cc_stderr.log"
 
 # Hard limit for one agent call, in seconds. Long builds can take a while; 30 minutes by default.
 STEP_TIMEOUT = int(os.getenv("ADW_STEP_TIMEOUT", "1800"))
+# Seconds the CLI gets to exit on its own after it has written its result line.
+EXIT_GRACE = int(os.getenv("ADW_EXIT_GRACE", "15"))
+POLL_SECONDS = 1
 
 
 def generate_short_id() -> str:
@@ -200,16 +207,14 @@ def truncate_output(
 
 
 def check_claude_installed() -> Optional[str]:
-    """Check if Claude Code CLI is installed. Return error message if not."""
-    try:
-        result = subprocess.run(
-            [CLAUDE_PATH, "--version"], capture_output=True, text=True
-        )
-        if result.returncode != 0:
-            return (
-                f"Error: Claude Code CLI is not installed. Expected at: {CLAUDE_PATH}"
-            )
-    except FileNotFoundError:
+    """Check that the Claude Code CLI exists. Return an error message if not.
+
+    A path lookup only: running `claude --version` before every step was seen to hang
+    for half an hour on a machine where the CLI's update check stalled.
+    """
+    import shutil
+
+    if shutil.which(CLAUDE_PATH) is None and not os.path.isfile(CLAUDE_PATH):
         return f"Error: Claude Code CLI is not installed. Expected at: {CLAUDE_PATH}"
     return None
 
@@ -384,6 +389,67 @@ def prompt_claude_code_with_retry(
     return last_response
 
 
+class _Completed:
+    def __init__(self, returncode: int):
+        self.returncode = returncode
+
+
+def _has_result_line(path: str) -> bool:
+    """True once the JSONL stream ends with a `result` message."""
+    try:
+        with open(path, "rb") as f:
+            f.seek(0, os.SEEK_END)
+            size = f.tell()
+            f.seek(max(0, size - 65536))
+            tail = f.read().decode("utf-8", "ignore")
+    except OSError:
+        return False
+    for line in reversed(tail.strip().splitlines()):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            return json.loads(line).get("type") == "result"
+        except json.JSONDecodeError:
+            return False
+    return False
+
+
+def _run_cli(cmd: List[str], output_file: str, stderr_file: str, env: Dict[str, str], cwd: Optional[str]) -> _Completed:
+    """Run the CLI. Return when it exits, or EXIT_GRACE seconds after it wrote its result line.
+
+    stdout streams to the JSONL file, stderr to its own file (a pipe could block if a child
+    outlives the CLI), stdin is closed so `claude -p` never waits on it. Claude Code has been
+    seen staying alive for many minutes after printing its final result (Bash-heavy prompts);
+    the result line is all we need, so past the grace period we stop the process ourselves.
+    """
+    with open(output_file, "w") as out_f, open(stderr_file, "w") as err_f:
+        proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=out_f, stderr=err_f, env=env, cwd=cwd)
+        deadline = time.time() + STEP_TIMEOUT
+        result_seen_at: Optional[float] = None
+        while True:
+            returncode = proc.poll()
+            if returncode is not None:
+                return _Completed(returncode)
+            now = time.time()
+            if now > deadline:
+                proc.kill()
+                proc.wait()
+                raise subprocess.TimeoutExpired(cmd, STEP_TIMEOUT)
+            if result_seen_at is None:
+                if _has_result_line(output_file):
+                    result_seen_at = now
+            elif now - result_seen_at > EXIT_GRACE:
+                proc.terminate()
+                try:
+                    proc.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    proc.wait()
+                return _Completed(0)
+            time.sleep(POLL_SECONDS)
+
+
 def prompt_claude_code(request: AgentPromptRequest) -> AgentPromptResponse:
     """Execute Claude Code with the given prompt configuration."""
 
@@ -426,19 +492,7 @@ def prompt_claude_code(request: AgentPromptRequest) -> AgentPromptResponse:
 
     stderr_file = os.path.join(output_dir or ".", STDERR_LOG)
     try:
-        # stdout streams to the JSONL file, stderr to its own file (a pipe could block if a
-        # child process outlives the CLI), stdin is closed so `claude -p` never waits on it.
-        with open(request.output_file, "w") as output_f, open(stderr_file, "w") as err_f:
-            result = subprocess.run(
-                cmd,
-                stdin=subprocess.DEVNULL,
-                stdout=output_f,
-                stderr=err_f,
-                text=True,
-                env=env,
-                cwd=request.working_dir,
-                timeout=STEP_TIMEOUT,
-            )
+        result = _run_cli(cmd, request.output_file, stderr_file, env, request.working_dir)
 
         if result.returncode == 0:
 

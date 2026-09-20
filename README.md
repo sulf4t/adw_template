@@ -245,7 +245,7 @@ cd ~/code/osler
 adwi                # short for: adw init
 ```
 
-`adw init` does three things in the repo you are standing in:
+`adw init` does three things in the repo you are standing in (the first call can take a few minutes: the agent installs dependencies and reads the code):
 
 1. Copies the default prompt templates into `.claude/commands/` (only the files that do not exist yet, it never overwrites yours).
 2. Creates `specs/` and adds `agents/` to `.gitignore`.
@@ -347,6 +347,8 @@ This is the part most people will touch. The rule: **change a markdown file, not
 ```
 
 That is all. `adwt` picks it up on the next run. Keep the command exact and runnable from the repo root; the `execution_command` field in the output is what the fixing agent will re-run.
+
+Pin your commands early. With an empty sequence the agent discovers the test tool itself, which works but is slower and can pick a different tool from one run to the next (`unittest` today, `pytest` tomorrow). Explicit blocks run the same way every time.
 
 ### 5.2 Add an E2E test (5 minutes)
 
