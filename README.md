@@ -214,8 +214,10 @@ Each phase is its own script (`adw_plan.py`, `adw_build.py`, `adw_test.py`, `adw
        │   ├── cc_raw_output.jsonl    full transcript (every tool call)
        │   ├── cc_final_object.json   last message: result text, cost, duration
        │   └── custom_summary_output.json
+       ├── test_results.json          what /test returned, one entry per test
+       ├── review.json                what /review returned
        ├── builder/       ...
-       ├── test_runner/   ...          + test_results.json
+       ├── test_runner/   ...
        └── reviewer/      ...          + review_img/*.png when the UI was checked
 ```
 
@@ -370,7 +372,7 @@ As a clinician I want to export an encounter list to CSV so that I can share it.
 - 2 screenshots are taken
 ```
 
-Run it alone with `adw test --e2e e2e/test_csv_export.md`. `adw full` runs all E2E files whose name matches the feature slug.
+Run it with `adw test --e2e e2e/test_csv_export.md`. `adw full` does not run E2E files on its own: the planning templates add the E2E file to the spec's validation commands, so the builder runs it, and you run it again with `adw test --e2e` whenever you want.
 
 ### 5.3 Change how the agent plans
 

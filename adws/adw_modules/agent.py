@@ -125,6 +125,10 @@ OUTPUT_JSONL = "cc_raw_output.jsonl"
 OUTPUT_JSON = "cc_raw_output.json"
 FINAL_OBJECT_JSON = "cc_final_object.json"
 SUMMARY_JSON = "custom_summary_output.json"
+STDERR_LOG = "cc_stderr.log"
+
+# Hard limit for one agent call, in seconds. Long builds can take a while; 30 minutes by default.
+STEP_TIMEOUT = int(os.getenv("ADW_STEP_TIMEOUT", "1800"))
 
 
 def generate_short_id() -> str:
@@ -420,17 +424,20 @@ def prompt_claude_code(request: AgentPromptRequest) -> AgentPromptResponse:
     # Set up environment with only required variables
     env = get_claude_env()
 
+    stderr_file = os.path.join(output_dir or ".", STDERR_LOG)
     try:
-        # Open output file for streaming
-        with open(request.output_file, "w") as output_f:
-            # Execute Claude Code and stream output to file
+        # stdout streams to the JSONL file, stderr to its own file (a pipe could block if a
+        # child process outlives the CLI), stdin is closed so `claude -p` never waits on it.
+        with open(request.output_file, "w") as output_f, open(stderr_file, "w") as err_f:
             result = subprocess.run(
                 cmd,
-                stdout=output_f,  # Stream directly to file
-                stderr=subprocess.PIPE,
+                stdin=subprocess.DEVNULL,
+                stdout=output_f,
+                stderr=err_f,
                 text=True,
                 env=env,
-                cwd=request.working_dir,  # Use working_dir if provided
+                cwd=request.working_dir,
+                timeout=STEP_TIMEOUT,
             )
 
         if result.returncode == 0:
@@ -511,8 +518,12 @@ def prompt_claude_code(request: AgentPromptRequest) -> AgentPromptResponse:
                     retry_code=RetryCode.NONE,
                 )
         else:
-            # Error occurred - stderr is captured, stdout went to file
-            stderr_msg = result.stderr.strip() if result.stderr else ""
+            # Error occurred - stderr went to its file, stdout went to the JSONL file
+            try:
+                with open(stderr_file, "r") as f:
+                    stderr_msg = f.read().strip()[-2000:]
+            except OSError:
+                stderr_msg = ""
 
             # Try to read the output file to check for errors in stdout
             stdout_msg = ""
@@ -573,7 +584,7 @@ def prompt_claude_code(request: AgentPromptRequest) -> AgentPromptResponse:
             )
 
     except subprocess.TimeoutExpired:
-        error_msg = "Error: Claude Code command timed out after 5 minutes"
+        error_msg = f"Error: Claude Code command timed out after {STEP_TIMEOUT} seconds (ADW_STEP_TIMEOUT)"
         return AgentPromptResponse(
             output=error_msg,
             success=False,
