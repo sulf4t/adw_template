@@ -470,6 +470,7 @@ your-repo/
 4. Run `./scripts/test.sh` and `adw full --dry-run "test"` before opening the PR.
 5. Say in the PR what you ran and what you saw. A PR that says "should work" is sent back.
 6. Add one line to `CHANGELOG.md` under `Unreleased`.
+7. Running `adw` on this repo itself creates `.claude/commands/` and `specs/`. Both are gitignored here; `templates/commands/` is the source.
 
 Roadmap, in order:
 

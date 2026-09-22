@@ -4,3 +4,6 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .DS_Store
+# Created when adw runs on this repo itself. templates/commands/ is the source of the commands.
+.claude/commands/
+specs/
