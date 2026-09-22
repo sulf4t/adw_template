@@ -410,6 +410,7 @@ Convention: **one workflow = one file, one phase = one template, one template = 
 ```
 adw_template/
 ├── README.md                    this file
+├── CHANGELOG.md                 one line per pull request, under Unreleased
 ├── adw.zsh                      the `adw` function and the adwi / adwp / adwb / adwt / adwf aliases
 ├── .env.sample                  ANTHROPIC_API_KEY, ADW_MODEL, ADW_RUNNER, CLAUDE_CODE_PATH
 ├── pytest.ini                   kit test config
@@ -467,6 +468,7 @@ your-repo/
 3. Scripts: no business logic. A script builds requests, calls the agent, checks the result, saves the summary, exits with a code. Under 150 lines is the target.
 4. Run `./scripts/test.sh` and `adw full --dry-run "test"` before opening the PR.
 5. Say in the PR what you ran and what you saw. A PR that says "should work" is sent back.
+6. Add one line to `CHANGELOG.md` under `Unreleased`.
 
 Roadmap, in order:
 
