@@ -23,7 +23,7 @@ def workflow(ctx, kind, prompt):
     kind = kind.lstrip("/")
     if kind not in KINDS:
         raise StepFailed(f"kind must be one of {KINDS}, got {kind!r}")
-    spec = ctx.template(f"/{kind}", [ctx.adw_id, prompt], agent="planner", parse=spec_path, dry="specs/dry-run.md")
+    spec = ctx.template(f"/{kind}", [ctx.adw_id, prompt], agent="planner", parse=spec_path, dry="specs/dry-run.md", model="fable")
     ctx.console.print(f"[bold]spec:[/bold] {spec}")
     return spec
 

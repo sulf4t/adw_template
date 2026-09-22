@@ -44,7 +44,7 @@ from agent import (  # noqa: E402
     prompt_claude_code_with_retry,
 )
 
-MODELS = ("sonnet", "opus")
+MODELS = ("sonnet", "opus", "fable")
 RUNNER = os.getenv("ADW_RUNNER", "claude")
 
 
@@ -81,6 +81,7 @@ class Ctx:
         parse: Optional[Callable[[str], Any]] = None,
         required: bool = True,
         dry: Any = None,
+        model: Optional[str] = None,
     ) -> Any:
         """Run a slash command from <working_dir>/.claude/commands/.
 
@@ -93,7 +94,7 @@ class Ctx:
             slash_command=slash_command,
             args=args,
             adw_id=self.adw_id,
-            model=self.model,
+            model=model or self.model,
             working_dir=self.working_dir,
         )
         label = f"{slash_command} {' '.join(args)}".strip()

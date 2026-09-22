@@ -59,7 +59,7 @@ def main():
     runner = os.getenv("ADW_RUNNER", "claude")
     table.add_row("ADW_RUNNER", "[green]claude[/green]" if runner == "claude" else f"[red]{runner}[/red]",
                   "" if runner == "claude" else "only 'claude' is implemented")
-    table.add_row("ADW_MODEL", os.getenv("ADW_MODEL", "sonnet"), "default model for every command")
+    table.add_row("ADW_MODEL", os.getenv("ADW_MODEL", "sonnet"), "default model (planning always uses fable)")
     console.print(table)
     if missing:
         console.print(f"[bold red]Missing:[/bold red] {', '.join(missing)}. See README section 3.")

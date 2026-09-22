@@ -10,6 +10,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Initial ADW kit: shared runtime, phase scripts, prompt templates, zsh helper, tests (942373c).
 
 ### Changed
+- Planning (`/chore`, `/feature`, `/bug`) always runs on `fable`; `--model` accepts `fable` and only affects build, test, review and ship (#3).
 - Runner: stop the Claude CLI once its result file is written; no version probe or update traffic (33af881).
 - Runner: harden the Claude runner and fix two README details (886c1b8).
 

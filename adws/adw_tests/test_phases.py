@@ -24,7 +24,7 @@ class Stub:
         self.calls = []
 
     def __call__(self, request):
-        self.calls.append((request.slash_command, list(request.args), request.agent_name))
+        self.calls.append((request.slash_command, list(request.args), request.agent_name, request.model))
         queue = self.answers.get(request.slash_command)
         if not queue:
             raise AssertionError(f"unexpected call {request.slash_command}")
@@ -55,6 +55,13 @@ def test_parse_kind_strips_backticks():
 def test_plan_rejects_unknown_kind(tmp_path):
     with pytest.raises(StepFailed, match="kind must be one of"):
         adw_plan.workflow(make_ctx(tmp_path), "epic", "x")
+
+
+def test_plan_always_uses_fable(tmp_path, monkeypatch):
+    stub = Stub({"/chore": ["specs/chore-abc12345-x.md"]})
+    monkeypatch.setattr(workflow, "execute_template", stub)
+    adw_plan.workflow(make_ctx(tmp_path), "chore", "x")
+    assert stub.calls[0][3] == "fable"
 
 
 def test_test_phase_fixes_then_passes(tmp_path, monkeypatch):
@@ -159,6 +166,8 @@ def test_full_runs_every_phase_in_order(tmp_path, monkeypatch):
     assert url == "https://github.com/o/r/pull/42"
     assert stub.commands() == ["/classify", "/feature", "/implement", "/test", "/review", "/commit", "/pull_request"]
     assert stub.calls[1][1] == ["abc12345", "Export encounters to CSV"]
+    assert stub.calls[1][3] == "fable"
+    assert [c[3] for i, c in enumerate(stub.calls) if i != 1] == ["sonnet"] * (len(stub.calls) - 1)
     assert ["git", "checkout", "-b", "adw/abc12345-csv-export"] in shell
 
 
