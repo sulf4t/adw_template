@@ -42,7 +42,9 @@ def process(repo, issue):
     number = str(issue["number"])
     prompt = f"{issue['title']}\n\n{issue.get('body') or ''}".strip()
     print(f"[adw afk] issue #{number}: {issue['title']}")
-    run = subprocess.run(["uv", "run", "--quiet", str(HERE / "adw_full.py"), prompt, "--working-dir", repo])
+    run = subprocess.run(
+        ["uv", "run", "--quiet", str(HERE / "adw_full.py"), prompt, "--working-dir", repo, "--issue", number]
+    )
     status = "completed" if run.returncode == 0 else f"failed (exit {run.returncode})"
     gh(repo, "issue", "comment", number, "--body", f"ADW workflow {status}.", check=False)
     gh(repo, "issue", "edit", number, "--add-label", DONE_LABEL, check=False)
