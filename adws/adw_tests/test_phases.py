@@ -45,6 +45,13 @@ PASS = [{"test_name": "unit", "passed": True, "execution_command": "pytest", "te
 FAIL = [{"test_name": "unit", "passed": False, "execution_command": "pytest", "test_purpose": "p", "error": "E"}]
 
 
+def test_parse_kind_strips_backticks():
+    assert adw_full.parse_kind("`/chore`") == "/chore"
+    assert adw_full.parse_kind("Some reasoning\n`/bug`\n") == "/bug"
+    with pytest.raises(ValueError, match="expected one of"):
+        adw_full.parse_kind("0")
+
+
 def test_plan_rejects_unknown_kind(tmp_path):
     with pytest.raises(StepFailed, match="kind must be one of"):
         adw_plan.workflow(make_ctx(tmp_path), "epic", "x")

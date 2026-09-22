@@ -25,6 +25,7 @@ KINDS = ("/chore", "/feature", "/bug")
 
 def parse_kind(text: str) -> str:
     kind = text.strip().splitlines()[-1].strip() if text.strip() else ""
+    kind = kind.strip("`").strip()
     if kind not in KINDS:
         raise ValueError(f"/classify returned {kind!r}, expected one of {KINDS}")
     return kind

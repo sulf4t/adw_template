@@ -14,4 +14,4 @@ Decide which planning template applies to the `Task` below.
 $ARGUMENTS
 
 ## Report
-Return ONLY one of `/chore`, `/bug`, `/feature` or `0`, nothing else.
+Return ONLY one of /chore, /bug, /feature or 0, with no backticks, quotes or punctuation.
