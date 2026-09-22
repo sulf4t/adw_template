@@ -277,7 +277,7 @@ All commands act on the current directory. `adw` is a zsh function that runs the
 | `adw afk` | | Poll this repo's open GitHub issues every 20 s and run `adw full` on each new one. Labels them `adw-done`. `--once` does a single pass | runs forever |
 | `adw doctor` | | Check prerequisites | |
 
-Options on every command: `--model sonnet|opus` (default `sonnet`, or `ADW_MODEL` in `~/adw/.env`), `--dry-run` (show every step, call nothing), `-h` (help).
+Options on every command: `--model sonnet|opus` (default `sonnet`, or `ADW_MODEL` in `~/adw/.env`), `--dry-run` (show every step, call nothing), `--issue <number>` (each agent step posts a comment on that GitHub issue; only `adw afk` sets it today), `-h` (help).
 
 ### Your first run (10 minutes)
 
@@ -312,7 +312,7 @@ Options on every command: `--model sonnet|opus` (default `sonnet`, or `ADW_MODEL
    +-------------------+       +-----------+       +-------------------------+
 ```
 
-Run `adw afk` in a terminal (or a `screen`/`tmux` session) on any machine with the repo cloned. Write issues. Review PRs. Add `[adw skip]` in an issue title to make the agent ignore it.
+Run `adw afk` in a terminal (or a `screen`/`tmux` session) on any machine with the repo cloned. Write issues. Review PRs. Add `[adw skip]` in an issue title to make the agent ignore it. The issue gets a comment per phase as the run progresses, not just a final status comment.
 
 ---
 

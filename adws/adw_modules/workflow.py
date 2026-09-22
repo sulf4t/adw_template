@@ -69,6 +69,7 @@ class Ctx:
     model: str
     working_dir: str
     dry_run: bool = False
+    issue: Optional[str] = None
     console: Console = field(default_factory=Console)
     steps: list = field(default_factory=list)
 
@@ -199,6 +200,29 @@ class Ctx:
             )
         )
         self.console.print(f"[dim]-> {out_dir}/[/dim]\n")
+        self._notify_issue(agent, label, response)
+
+    def _notify_issue(self, agent: str, label: str, response: AgentPromptResponse) -> None:
+        """Best-effort: post a short comment on self.issue reporting this step. Never raises."""
+        if not self.issue or self.dry_run:
+            return
+        status = "succeeded" if response.success else "failed"
+        short_label = label if len(label) < 400 else label[:400] + "..."
+        body = (
+            f"ADW {self.adw_id}: {agent} {status}.\n"
+            f"{short_label}\n"
+            f"Trace: agents/{self.adw_id}/{agent}/"
+        )
+        try:
+            subprocess.run(
+                ["gh", "issue", "comment", str(self.issue), "--body", body],
+                cwd=self.working_dir,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        except OSError:
+            pass
 
     def _show_inputs(self, agent: str, label: str) -> None:
         table = Table(show_header=False, box=None, padding=(0, 1))
@@ -253,7 +277,7 @@ def run(fn: Callable, *extra_options) -> None:
         for p in params
     )
 
-    def main(args, model, working_dir, dry_run, **options):
+    def main(args, model, working_dir, dry_run, issue, **options):
         if RUNNER != "claude":
             raise click.UsageError(f"ADW_RUNNER={RUNNER} is not implemented yet; only 'claude' is")
         try:
@@ -266,6 +290,7 @@ def run(fn: Callable, *extra_options) -> None:
             model=model,
             working_dir=working_dir or os.getcwd(),
             dry_run=dry_run,
+            issue=issue,
         )
         header = f"[cyan]ADW[/cyan] {name}   [cyan]id[/cyan] {ctx.adw_id}   [cyan]dir[/cyan] {ctx.working_dir}"
         if dry_run:
@@ -288,6 +313,9 @@ def run(fn: Callable, *extra_options) -> None:
     for option in reversed(extra_options):
         command = option(command)
     command = click.option("--dry-run", is_flag=True, help="Show each step without calling Claude Code.")(command)
+    command = click.option(
+        "--issue", default=None, help="GitHub issue number; each agent step posts a comment there."
+    )(command)
     command = click.option(
         "--working-dir",
         type=click.Path(exists=True, file_okay=False, dir_okay=True, resolve_path=True),

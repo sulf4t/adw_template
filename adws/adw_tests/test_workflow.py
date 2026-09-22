@@ -78,3 +78,52 @@ def test_save_writes_under_run_dir(tmp_path):
     path = ctx.save("x.json", {"k": 1})
     assert path == tmp_path / "agents" / "abc12345" / "x.json"
     assert json.loads(path.read_text()) == {"k": 1}
+
+
+def test_step_posts_gh_comment_when_issue_set(tmp_path, monkeypatch):
+    monkeypatch.setattr(workflow, "execute_template",
+                        lambda r: AgentPromptResponse(output="ok", success=True))
+    calls = []
+    monkeypatch.setattr(workflow.subprocess, "run", lambda *a, **kw: calls.append((a, kw)))
+    ctx = make_ctx(tmp_path)
+    ctx.issue = "42"
+    ctx.template("/chore", ["a"], agent="planner")
+    assert len(calls) == 1
+    args, kwargs = calls[0]
+    argv = args[0]
+    assert argv[:5] == ["gh", "issue", "comment", "42", "--body"]
+    body = argv[5]
+    assert kwargs["cwd"] == str(tmp_path)
+    assert "planner" in body
+    assert "succeeded" in body
+
+
+def test_step_does_not_post_when_issue_not_set(tmp_path, monkeypatch):
+    monkeypatch.setattr(workflow, "execute_template",
+                        lambda r: AgentPromptResponse(output="ok", success=True))
+    calls = []
+    monkeypatch.setattr(workflow.subprocess, "run", lambda *a, **kw: calls.append((a, kw)))
+    make_ctx(tmp_path).template("/chore", ["a"])
+    assert calls == []
+
+
+def test_step_does_not_post_in_dry_run(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(workflow.subprocess, "run", lambda *a, **kw: calls.append((a, kw)))
+    ctx = make_ctx(tmp_path, dry_run=True)
+    ctx.issue = "42"
+    ctx.template("/chore", ["a"])
+    assert calls == []
+
+
+def test_gh_comment_failure_does_not_raise(tmp_path, monkeypatch):
+    monkeypatch.setattr(workflow, "execute_template",
+                        lambda r: AgentPromptResponse(output="ok", success=True))
+
+    def boom(*a, **kw):
+        raise OSError("gh not found")
+
+    monkeypatch.setattr(workflow.subprocess, "run", boom)
+    ctx = make_ctx(tmp_path)
+    ctx.issue = "42"
+    assert ctx.template("/chore", ["a"]) == "ok"
