@@ -277,7 +277,7 @@ All commands act on the current directory. `adw` is a zsh function that runs the
 | `adw afk` | | Poll this repo's open GitHub issues every 20 s and run `adw full` on each new one. Labels them `adw-done`. `--once` does a single pass | runs forever |
 | `adw doctor` | | Check prerequisites | |
 
-Options on every command: `--model sonnet|opus` (default `sonnet`, or `ADW_MODEL` in `~/adw/.env`), `--dry-run` (show every step, call nothing), `--issue <number>` (each agent step posts a comment on that GitHub issue; only `adw afk` sets it today), `-h` (help).
+Options on every command: `--model sonnet|opus|fable` (default `sonnet`, or `ADW_MODEL` in `~/adw/.env`), `--dry-run` (show every step, call nothing), `--issue <number>` (each agent step posts a comment on that GitHub issue; only `adw afk` sets it today), `-h` (help). The planning phase (`/chore`, `/feature`, `/bug`) always runs on `fable` regardless of this flag.
 
 ### Your first run (10 minutes)
 
@@ -401,6 +401,7 @@ Convention: **one workflow = one file, one phase = one template, one template = 
 
 - Per run: `adw full "..." --model opus`.
 - Default: `ADW_MODEL=sonnet` in `~/adw/.env`.
+- Planning always runs on `fable`: the `/chore`, `/feature` and `/bug` steps ignore `--model`/`ADW_MODEL`. That flag only affects build, test, review and ship.
 - Runner: `ADW_RUNNER=claude` (default and only one today). A `copilot` runner (GitHub Copilot CLI in programmatic mode, for environments where Claude Code is not allowed) is on the roadmap: same templates, same scripts, different binary. Only `adws/adw_modules/agent.py` knows how to call the CLI.
 
 ---
@@ -469,6 +470,7 @@ your-repo/
 4. Run `./scripts/test.sh` and `adw full --dry-run "test"` before opening the PR.
 5. Say in the PR what you ran and what you saw. A PR that says "should work" is sent back.
 6. Add one line to `CHANGELOG.md` under `Unreleased`.
+7. Running `adw` on this repo itself creates `.claude/commands/` and `specs/`. Both are gitignored here; `templates/commands/` is the source.
 
 Roadmap, in order:
 

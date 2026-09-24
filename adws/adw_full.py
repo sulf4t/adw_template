@@ -34,7 +34,7 @@ def parse_kind(text: str) -> str:
 def workflow(ctx, prompt):
     """One prompt in, one pull request out."""
     kind = ctx.template("/classify", [prompt], agent="classifier", parse=parse_kind, dry="/chore")
-    spec = ctx.template(kind, [ctx.adw_id, prompt], agent="planner", parse=spec_path, dry="specs/dry-run.md")
+    spec = ctx.template(kind, [ctx.adw_id, prompt], agent="planner", parse=spec_path, dry="specs/dry-run.md", model="fable")
     ctx.console.rule(f"[bold]{kind} -> {spec}[/bold]")
     adw_ship.ensure_branch(ctx, spec)
     adw_build.workflow(ctx, spec)
